@@ -2,13 +2,14 @@ package models
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 )
 
 type User struct {
-	ID        int16  `json:"id"`
+	ID        int8   `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Username  string `json:"username"`
@@ -18,25 +19,17 @@ type User struct {
 
 type Users []User
 
-func hashUserPassword(password string) []byte {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return hash
-}
-
-func (u *User) getUser(db *sql.DB) error {
+func (u *User) GetUser(db *sql.DB) error {
 	return db.QueryRow("SELECT username, first_name, last_name, email from User where id=$1", u.ID).Scan(&u.Username, &u.FirstName, &u.LastName, &u.Email)
 }
 
-func (u *User) updateUser(db *sql.DB) error {
+func (u *User) UpdateUser(db *sql.DB) error {
 	_, err := db.Exec("UPDATE User set username=$1,email=$2, first_name=$3, last_name=$4 where id=$5", u.Username, u.Email, u.FirstName, u.LastName, u.ID)
 
 	return err
 }
 
-func (u *User) updatePassword(db *sql.DB) error {
+func (u *User) UpdatePassword(db *sql.DB) error {
 	if u.Password == "" {
 		return errors.New("Password is empty")
 	}
@@ -52,11 +45,11 @@ func (u *User) updatePassword(db *sql.DB) error {
 	return nil
 }
 
-func (u *User) deleteUser(db *sql.DB) error {
+func (u *User) DeleteUser(db *sql.DB) error {
 	return errors.New("Not implemented")
 }
 
-func (u *User) createUser(db *sql.DB) error {
+func (u *User) CreateUser(db *sql.DB) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), 14)
 	u.Password = string(hash)
 
@@ -73,4 +66,22 @@ func (u *User) createUser(db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func hashUserPassword(password string) []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return hash
+}
+
+func (u *User) MarshalJSON() ([]byte, error) {
+	type Alias User
+	return json.Marshal(&struct {
+		Password string `json:"-"`
+		*Alias
+	}{
+		Alias: (*Alias)(u),
+	})
 }
