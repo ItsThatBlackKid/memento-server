@@ -6,10 +6,8 @@ import (
 	"testing"
 )
 
-var app = App{}
-
 func TestMain(m *testing.M) {
-	app.Initialize(os.Getenv("DB"))
+	initialize()
 	ensureTableExists()
 	code := m.Run()
 	clearTable()
@@ -36,12 +34,12 @@ CREATE TABLE IF NOT EXISTS [memento] (
 `
 
 func ensureTableExists() {
-	if _, err := app.DB.Exec(tableConnectionQuery); err != nil {
+	if _, err := DB.Exec(tableConnectionQuery); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func clearTable() {
-	app.DB.Exec("DELETE FROM memento")
-	app.DB.Exec("DELETE FROM user")
+	DB.Exec("DELETE FROM memento")
+	DB.Exec("DELETE FROM user")
 }
