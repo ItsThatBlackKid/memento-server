@@ -1,10 +1,10 @@
 package models
 
 import (
-	"database/sql"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"log"
+	"memento/context"
 	"memento/dto"
 )
 
@@ -19,37 +19,48 @@ type User struct {
 
 type Users []User
 
-func (u *User) GetUser(db *sql.DB) error {
-	return db.QueryRow("SELECT username, first_name, last_name, email from User where id=$1", u.ID).Scan(&u.Username, &u.FirstName, &u.LastName, &u.Email)
-}
-
-func (u *User) UpdateUser(db *sql.DB) error {
-	_, err := db.Exec("UPDATE User set username=$1,email=$2, first_name=$3, last_name=$4 where id=$5", u.Username, u.Email, u.FirstName, u.LastName, u.ID)
-
-	return err
-}
-
-func (u *User) UpdatePassword(db *sql.DB) error {
-	if u.Password == "" {
-		return errors.New("Password is empty")
-	}
-
-	u.Password = string(hashUserPassword(u.Password))
-
-	_, err := db.Exec("UPDATE User set password=$1 where id=$1", u.Password, u.ID)
-
-	if err != nil {
-		return err
+func (u *User) GetUser() error {
+	if result := context.Context.DB.First(&u, u.ID); result.Error != nil {
+		return result.Error
 	}
 
 	return nil
 }
 
-func (u *User) DeleteUser(db *sql.DB) error {
-	return errors.New("Not implemented")
+func (u *User) UpdateUser() error {
+	result := context.Context.DB.Model(&u).Select(
+		"first_name",
+		"last_name",
+		"email",
+		"username",
+	).Updates(&u)
+
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
 }
 
-func (u *User) CreateUser(db *sql.DB) error {
+func (u *User) UpdatePassword() error {
+	if u.Password == "" {
+		return errors.New("password is empty")
+	}
+
+	u.Password = string(hashUserPassword(u.Password))
+
+	result := context.Context.DB.Model(&u).Update("password", u.Password)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
+
+func (u *User) DeleteUser() error {
+	return errors.New("not implemented")
+}
+
+func (u *User) CreateUser() error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), 14)
 	u.Password = string(hash)
 
@@ -57,22 +68,19 @@ func (u *User) CreateUser(db *sql.DB) error {
 		return err
 	}
 
-	err = db.QueryRow(
-		"INSERT INTO User(username, email, first_name, last_name, password) VALUES ($1,$2,$3,$4,$5) RETURNING id",
-		u.Username, u.Email, u.FirstName, u.LastName, u.Password).Scan(&u.ID)
-
-	if err != nil {
-		return err
+	result := context.Context.DB.Create(&u)
+	if result.Error != nil {
+		return result.Error
 	}
 
 	return nil
 }
 
-func (u *User) LoginUser(db *sql.DB, loginUser dto.LoginUser) error {
-	err := db.QueryRow("SELECT id, username, first_name, last_name, email, password  from User where username=$1", loginUser.Username).Scan(&u.ID, &u.Username, &u.FirstName, &u.LastName, &u.Email, &u.Password)
+func (u *User) LoginUser(loginUser dto.LoginUser) error {
+	result := context.Context.DB.First(&u, "username=$1", loginUser.Username)
 
-	if err != nil {
-		return err
+	if result.Error != nil {
+		return result.Error
 	}
 
 	if !verifyPassword(loginUser.Password, u.Password) {
@@ -83,7 +91,10 @@ func (u *User) LoginUser(db *sql.DB, loginUser dto.LoginUser) error {
 }
 
 func hashUserPassword(password string) []byte {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(
+		[]byte(password),
+		bcrypt.DefaultCost,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,10 +102,10 @@ func hashUserPassword(password string) []byte {
 }
 
 func verifyPassword(loginPassword string, hash string) bool {
-	original_bytes := []byte(loginPassword)
-	hash_bytes := []byte(hash)
+	originalBytes := []byte(loginPassword)
+	hashBytes := []byte(hash)
 
-	err := bcrypt.CompareHashAndPassword(hash_bytes, original_bytes)
+	err := bcrypt.CompareHashAndPassword(hashBytes, originalBytes)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,38 +1,24 @@
 package main
 
 import (
-	"database/sql"
 	"github.com/gorilla/mux"
-	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"log"
+	"memento/context"
 	"memento/controller"
 	"net/http"
 	"os"
-	"path/filepath"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
 func initialize() {
 	var err error
-	DB, err = sql.Open("sqlite3", os.Getenv("DB"))
+	DB, err = gorm.Open(sqlite.Open(os.Getenv("DB")), &gorm.Config{})
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	// read the sql file
-	filePath := filepath.Join("./", "db", "mementodb.sql")
-	c, ioErr := os.ReadFile(filePath)
-	if ioErr != nil {
-		log.Fatal(ioErr)
-	}
-
-	// execute table creation query
-	tableCreationQuery := string(c)
-	_, err = DB.Exec(tableCreationQuery)
-	if err != nil {
-		log.Fatal(err)
+		panic("failed to connect database")
 	}
 }
 
@@ -42,13 +28,18 @@ func main() {
 
 	// define routes
 	r := mux.NewRouter()
-	uc := controller.UserController{
+	context.Context = context.RequestContext{
 		DB: DB,
 	}
 
-	r.HandleFunc("/users", uc.CreateUser).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", uc.GetUser).Methods("GET")
-	r.HandleFunc("/login", uc.LoginUser).Methods("POST")
+	// user + auth routes
+	r.HandleFunc("/users", controller.CreateUser).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}", controller.GetUser).Methods("GET")
+	r.HandleFunc("/login", controller.LoginUser).Methods("POST")
+
+	// memento routes
+	r.HandleFunc("/memento", controller.CreateMemento).Methods("POST")
+	r.HandleFunc("/memento/{userid}", controller.GetMementos).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
