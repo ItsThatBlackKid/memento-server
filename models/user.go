@@ -2,10 +2,10 @@ package models
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"log"
+	"memento/dto"
 )
 
 type User struct {
@@ -68,6 +68,20 @@ func (u *User) CreateUser(db *sql.DB) error {
 	return nil
 }
 
+func (u *User) LoginUser(db *sql.DB, loginUser dto.LoginUser) error {
+	err := db.QueryRow("SELECT id, username, first_name, last_name, email, password  from User where username=$1", loginUser.Username).Scan(&u.ID, &u.Username, &u.FirstName, &u.LastName, &u.Email, &u.Password)
+
+	if err != nil {
+		return err
+	}
+
+	if !verifyPassword(loginUser.Password, u.Password) {
+		return errors.New("username or password do not match")
+	}
+
+	return nil
+}
+
 func hashUserPassword(password string) []byte {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -76,12 +90,24 @@ func hashUserPassword(password string) []byte {
 	return hash
 }
 
-func (u *User) MarshalJSON() ([]byte, error) {
-	type Alias User
-	return json.Marshal(&struct {
-		Password string `json:"-"`
-		*Alias
-	}{
-		Alias: (*Alias)(u),
-	})
+func verifyPassword(loginPassword string, hash string) bool {
+	original_bytes := []byte(loginPassword)
+	hash_bytes := []byte(hash)
+
+	err := bcrypt.CompareHashAndPassword(hash_bytes, original_bytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return true
+}
+
+func (u *User) ToDTO() dto.UserDTO {
+	return dto.UserDTO{
+		ID:        u.ID,
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Username:  u.Username,
+		Email:     u.Email,
+	}
 }

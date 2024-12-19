@@ -47,7 +47,8 @@ func main() {
 	}
 
 	r.HandleFunc("/users", uc.CreateUser).Methods("POST")
-	r.HandleFunc("/users/{id}", uc.GetUser).Methods("GET")
+	r.HandleFunc("/users/{id:[0-9]+}", uc.GetUser).Methods("GET")
+	r.HandleFunc("/login", uc.LoginUser).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

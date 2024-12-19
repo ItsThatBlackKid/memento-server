@@ -7,7 +7,9 @@ import (
 	"github.com/gorilla/mux"
 	"io"
 	"log"
+	"memento/dto"
 	"memento/models"
+	"memento/utils"
 	"net/http"
 	"strconv"
 )
@@ -34,7 +36,7 @@ func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, u)
+	respondWithJSON(w, http.StatusOK, u.ToDTO())
 }
 
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +60,7 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, u)
+	respondWithJSON(w, http.StatusCreated, u.ToDTO())
 }
 
 func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +76,12 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again.")
+		}
+	}(r.Body)
 	u.ID = int8(id)
 
 	if err := u.UpdateUser(uc.DB); err != nil {
@@ -82,5 +89,46 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, u)
+	respondWithJSON(w, http.StatusCreated, u.ToDTO())
+}
+
+func (uc *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
+	type LoginResponse struct {
+		Message string `json:"message"`
+		Token   string `json:"token"`
+	}
+
+	// max 1MB size
+	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	var u dto.LoginUser
+	var user models.User
+	if err := dec.Decode(&u); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid User payload")
+		return
+	}
+
+	log.Println("decoded user: ", u)
+
+	if err := user.LoginUser(uc.DB, u); err != nil {
+		respondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	token, err := utils.EncodeJwt(user.ToDTO())
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again.")
+		return
+	}
+
+	resp := LoginResponse{
+		Message: "Login successful!",
+		Token:   token,
+	}
+
+	respondWithJSON(w, http.StatusAccepted, resp)
 }
