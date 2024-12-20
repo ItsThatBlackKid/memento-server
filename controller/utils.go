@@ -1,10 +1,15 @@
 package controller
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 )
+
+type Controller struct {
+	DB *sql.DB
+}
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	res, _ := json.Marshal(payload)

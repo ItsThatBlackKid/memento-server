@@ -1,4 +1,4 @@
-CREATE TABLE if not exists  [user] (
+CREATE TABLE if not exists  [users] (
     id integer primary key autoincrement,
     username text not null,
     email text not null,
@@ -12,6 +12,7 @@ CREATE TABLE if not exists [memento] (
     userid integer not null,
     title text not null,
     body text,
+    mood integer not null,
     foreign key (userid) references user(id) on update cascade
 )
 

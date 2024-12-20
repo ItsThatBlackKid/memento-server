@@ -1,54 +1,57 @@
 package main
 
 import (
-	"database/sql"
 	"github.com/gorilla/mux"
-	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"log"
+	"memento/context"
 	"memento/controller"
+	"memento/models"
 	"net/http"
 	"os"
-	"path/filepath"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
-func initialize() {
+func initDB() {
 	var err error
-	DB, err = sql.Open("sqlite3", os.Getenv("DB"))
+	DB, err = gorm.Open(sqlite.Open(os.Getenv("DB")), &gorm.Config{})
+	DB = DB.Set("gorm:auto_preload", true)
+	log.Println("Loaded database")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// read the sql file
-	filePath := filepath.Join("./", "db", "mementodb.sql")
-	c, ioErr := os.ReadFile(filePath)
-	if ioErr != nil {
-		log.Fatal(ioErr)
-	}
-
-	// execute table creation query
-	tableCreationQuery := string(c)
-	_, err = DB.Exec(tableCreationQuery)
-	if err != nil {
+	if err := DB.AutoMigrate(&models.User{}, &models.Memento{}); err != nil {
 		log.Fatal(err)
 	}
+	log.Println("User table migrated")
+	if err := DB.AutoMigrate(&models.Memento{}); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Memento table migrated")
 }
 
 func main() {
 	// initalize app
-	initialize()
+	initDB()
 
 	// define routes
 	r := mux.NewRouter()
-	uc := controller.UserController{
+	context.Context = context.RequestContext{
 		DB: DB,
 	}
 
-	r.HandleFunc("/users", uc.CreateUser).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", uc.GetUser).Methods("GET")
-	r.HandleFunc("/login", uc.LoginUser).Methods("POST")
+	// user + auth routes
+	r.HandleFunc("/users", controller.CreateUser).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}", controller.GetUser).Methods("GET")
+	r.HandleFunc("/login", controller.LoginUser).Methods("POST")
+
+	// memento routes
+	r.HandleFunc("/memento", controller.CreateMemento).Methods("POST")
+	r.HandleFunc("/memento/{userid: [0-9]+}", controller.GetMementos).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

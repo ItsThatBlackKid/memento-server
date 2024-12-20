@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"io"
 	"log"
+	"memento/context"
 	"memento/dto"
 	"memento/models"
 	"memento/utils"
@@ -14,19 +15,16 @@ import (
 	"strconv"
 )
 
-type UserController struct {
-	DB *sql.DB
-}
-
-func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request) {
+func GetUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 	}
 
-	u := models.User{ID: int8(int16(id))}
-	if err := u.GetUser(uc.DB); err != nil {
+	u := models.User{}
+	u.ID = uint(id)
+	if err := u.GetUser(); err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			respondWithError(w, http.StatusNotFound, "User not found")
@@ -39,7 +37,7 @@ func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, u.ToDTO())
 }
 
-func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
+func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var u models.User
 
 	decoder := json.NewDecoder(r.Body)
@@ -55,7 +53,7 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}(r.Body)
 
-	if err := u.CreateUser(uc.DB); err != nil {
+	if err := u.CreateUser(); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -63,7 +61,7 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, u.ToDTO())
 }
 
-func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -79,12 +77,16 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again.")
+			respondWithError(
+				w,
+				http.StatusInternalServerError,
+				"Something went wrong, please try again.",
+			)
 		}
 	}(r.Body)
-	u.ID = int8(id)
+	u.ID = uint(int8(id))
 
-	if err := u.UpdateUser(uc.DB); err != nil {
+	if err := u.UpdateUser(); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -92,7 +94,7 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, u.ToDTO())
 }
 
-func (uc *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
+func LoginUser(w http.ResponseWriter, r *http.Request) {
 	type LoginResponse struct {
 		Message string `json:"message"`
 		Token   string `json:"token"`
@@ -113,15 +115,24 @@ func (uc *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("decoded user: ", u)
 
-	if err := user.LoginUser(uc.DB, u); err != nil {
+	if err := user.LoginUser(u); err != nil {
 		respondWithError(w, http.StatusUnauthorized, err.Error())
 		return
+	}
+
+	context.Context = context.RequestContext{
+		Userid: context.Context.Userid,
+		DB:     context.Context.DB,
 	}
 
 	token, err := utils.EncodeJwt(user.ToDTO())
 
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again.")
+		respondWithError(
+			w,
+			http.StatusInternalServerError,
+			"Something went wrong, please try again.",
+		)
 		return
 	}
 

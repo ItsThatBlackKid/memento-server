@@ -1,29 +1,72 @@
 package models
 
 import (
-	"database/sql"
-	"errors"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"log"
+	"memento/context"
 )
 
 type Memento struct {
-	ID     int16  `json:"id"`
-	userid int16  `json:"userid"`
-	title  string `json:"title"`
-	body   string `json:"body"`
+	GormModel
+	User   User   `json:"user"`
+	UserID uint   `json:"user_id"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	Mood   int8   `gorm:"check:mood <=10" json:"mood"`
 }
 
-func (m *Memento) getMemento(db *sql.DB) error {
-	return errors.New("not implemented")
+// Memento model hooks
+
+func (m *Memento) AfterSave(tx *gorm.DB) (err error) {
+	tx.Omit("Password").First(&(m).User, "ID", m.UserID)
+	return
 }
 
-func (m *Memento) createMemento(db *sql.DB) error {
-	return errors.New("not implemented")
+func (m *Memento) GetMemento(db *gorm.DB) error {
+	result := db.First(&m, m.ID)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
 }
 
-func (m *Memento) deleteMemento(db *sql.DB) error {
-	return errors.New("not implemented")
+func (m *Memento) CreateMemento() error {
+	result := context.Context.DB.Omit("User").Create(&m)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
 }
 
-func (m *Memento) getMementos(db *sql.DB) ([]Memento, error) {
-	return nil, errors.New("not implemented")
+func (m *Memento) DeleteMemento() error {
+	result := context.Context.DB.Delete(&m)
+	return result.Error
+}
+
+func (m *Memento) GetMementosByUserId(db *gorm.DB) ([]Memento, error) {
+	var mementos []Memento
+	result := db.Preload(clause.Associations).Find(&mementos, "user_id", m.UserID)
+
+	if result.Error != nil {
+		log.Fatal(result.Error)
+		return nil, result.Error
+	}
+
+	return mementos, nil
+}
+
+func (m *Memento) GetMementos(db *gorm.DB) ([]Memento, error) {
+	var mementos []Memento
+	result := db.Find(&mementos)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return mementos, nil
 }
