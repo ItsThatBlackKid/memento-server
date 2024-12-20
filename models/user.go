@@ -3,19 +3,18 @@ package models
 import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 	"log"
 	"memento/context"
 	"memento/dto"
 )
 
 type User struct {
-	gorm.Model
+	GormModel
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
-	Username  string `gorm:"<-;unique;not null"`
-	Password  string `gorm:"not null"`
-	Email     string `gorm:"not null;unique"`
+	Username  string `gorm:"<-;unique;not null" json:"username"`
+	Password  string `gorm:"not null" json:"password"`
+	Email     string `gorm:"not null;unique" json:"email"`
 }
 
 type Users []User
@@ -117,7 +116,12 @@ func verifyPassword(loginPassword string, hash string) bool {
 
 func (u *User) ToDTO() dto.UserDTO {
 	return dto.UserDTO{
-		ID:        u.ID,
+		CommonDTO: dto.CommonDTO{
+			ID:        u.ID,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+			DeletedAt: u.DeletedAt,
+		},
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
 		Username:  u.Username,

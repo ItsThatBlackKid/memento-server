@@ -2,17 +2,25 @@ package models
 
 import (
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"log"
 	"memento/context"
 )
 
 type Memento struct {
-	gorm.Model
-	User   User   `gorm:"references:ID" json:"user,omitempty"`
-	UserID int    `json:"userid"`
+	GormModel
+	User   User   `json:"user"`
+	UserID uint   `json:"user_id"`
 	Title  string `json:"title"`
 	Body   string `json:"body"`
 	Mood   int8   `gorm:"check:mood <=10" json:"mood"`
+}
+
+// Memento model hooks
+
+func (m *Memento) AfterSave(tx *gorm.DB) (err error) {
+	tx.Omit("Password").First(&(m).User, "ID", m.UserID)
+	return
 }
 
 func (m *Memento) GetMemento(db *gorm.DB) error {
@@ -26,7 +34,7 @@ func (m *Memento) GetMemento(db *gorm.DB) error {
 }
 
 func (m *Memento) CreateMemento() error {
-	result := context.Context.DB.Preload("User").Create(&m)
+	result := context.Context.DB.Omit("User").Create(&m)
 
 	if result.Error != nil {
 		return result.Error
@@ -42,7 +50,7 @@ func (m *Memento) DeleteMemento() error {
 
 func (m *Memento) GetMementosByUserId(db *gorm.DB) ([]Memento, error) {
 	var mementos []Memento
-	result := db.Find(&mementos, "userid=$1", m.UserID)
+	result := db.Preload(clause.Associations).Find(&mementos, "user_id", m.UserID)
 
 	if result.Error != nil {
 		log.Fatal(result.Error)

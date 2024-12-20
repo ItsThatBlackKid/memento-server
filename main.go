@@ -17,14 +17,14 @@ var DB *gorm.DB
 func initDB() {
 	var err error
 	DB, err = gorm.Open(sqlite.Open(os.Getenv("DB")), &gorm.Config{})
+	DB = DB.Set("gorm:auto_preload", true)
 	log.Println("Loaded database")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Migrating user table")
-	if err := DB.AutoMigrate(&models.User{}); err != nil {
+	if err := DB.AutoMigrate(&models.User{}, &models.Memento{}); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("User table migrated")
