@@ -51,7 +51,7 @@ func main() {
 
 	// memento routes
 	r.HandleFunc("/memento", controller.CreateMemento).Methods("POST")
-	r.HandleFunc("/memento/{userid}", controller.GetMementos).Methods("GET")
+	r.HandleFunc("/memento/{userid: [0-9]+}", controller.GetMementos).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
