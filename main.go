@@ -7,24 +7,36 @@ import (
 	"log"
 	"memento/context"
 	"memento/controller"
+	"memento/models"
 	"net/http"
 	"os"
 )
 
 var DB *gorm.DB
 
-func initialize() {
+func initDB() {
 	var err error
 	DB, err = gorm.Open(sqlite.Open(os.Getenv("DB")), &gorm.Config{})
+	log.Println("Loaded database")
 
 	if err != nil {
-		panic("failed to connect database")
+		log.Fatal(err)
 	}
+
+	log.Println("Migrating user table")
+	if err := DB.AutoMigrate(&models.User{}); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("User table migrated")
+	if err := DB.AutoMigrate(&models.Memento{}); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Memento table migrated")
 }
 
 func main() {
 	// initalize app
-	initialize()
+	initDB()
 
 	// define routes
 	r := mux.NewRouter()
@@ -39,7 +51,7 @@ func main() {
 
 	// memento routes
 	r.HandleFunc("/memento", controller.CreateMemento).Methods("POST")
-	r.HandleFunc("/memento/{userid}", controller.GetMementos).Methods("POST")
+	r.HandleFunc("/memento/{userid}", controller.GetMementos).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

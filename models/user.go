@@ -3,18 +3,19 @@ package models
 import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 	"log"
 	"memento/context"
 	"memento/dto"
 )
 
 type User struct {
-	ID        int8   `json:"id"`
+	gorm.Model
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	Email     string `json:"email"`
+	Username  string `gorm:"<-;unique;not null"`
+	Password  string `gorm:"not null"`
+	Email     string `gorm:"not null;unique"`
 }
 
 type Users []User
@@ -63,6 +64,7 @@ func (u *User) DeleteUser() error {
 func (u *User) CreateUser() error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), 14)
 	u.Password = string(hash)
+	log.Println("saving user...", u)
 
 	if err != nil {
 		return err

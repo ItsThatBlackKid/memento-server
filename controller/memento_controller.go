@@ -23,7 +23,7 @@ func GetMementos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var memento = models.Memento{
-		ID: int16(userid),
+		UserID: userid,
 	}
 
 	mementos, err := memento.GetMementosByUserId(context.Context.DB)

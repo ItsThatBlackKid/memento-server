@@ -22,7 +22,8 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 	}
 
-	u := models.User{ID: int8(int16(id))}
+	u := models.User{}
+	u.ID = uint(id)
 	if err := u.GetUser(); err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -83,7 +84,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 			)
 		}
 	}(r.Body)
-	u.ID = int8(id)
+	u.ID = uint(int8(id))
 
 	if err := u.UpdateUser(); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())

@@ -1,4 +1,4 @@
-CREATE TABLE if not exists  [user] (
+CREATE TABLE if not exists  [users] (
     id integer primary key autoincrement,
     username text not null,
     email text not null,
