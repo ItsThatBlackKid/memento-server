@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"log"
-	"memento/context"
+	"memento/appContext"
 )
 
 type Memento struct {
@@ -34,7 +34,7 @@ func (m *Memento) GetMemento(db *gorm.DB) error {
 }
 
 func (m *Memento) CreateMemento() error {
-	result := context.Context.DB.Omit("User").Create(&m)
+	result := appContext.DB.Omit("User").Create(&m)
 
 	if result.Error != nil {
 		return result.Error
@@ -44,7 +44,7 @@ func (m *Memento) CreateMemento() error {
 }
 
 func (m *Memento) DeleteMemento() error {
-	result := context.Context.DB.Delete(&m)
+	result := appContext.DB.Delete(&m)
 	return result.Error
 }
 

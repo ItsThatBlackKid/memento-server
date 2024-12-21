@@ -1,17 +1,12 @@
 package controller
 
 import (
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 )
 
-type Controller struct {
-	DB *sql.DB
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func ResponseWithJson(w http.ResponseWriter, code int, payload interface{}) {
 	res, _ := json.Marshal(payload)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
@@ -22,6 +17,6 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	}
 }
 
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
+func RespondWithError(w http.ResponseWriter, code int, message string) {
+	ResponseWithJson(w, code, map[string]string{"error": message})
 }
