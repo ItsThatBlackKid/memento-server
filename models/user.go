@@ -4,7 +4,7 @@ import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"log"
-	"memento/context"
+	"memento/appContext"
 	"memento/dto"
 )
 
@@ -20,7 +20,7 @@ type User struct {
 type Users []User
 
 func (u *User) GetUser() error {
-	if result := context.Context.DB.First(&u, u.ID); result.Error != nil {
+	if result := appContext.DB.First(&u, u.ID); result.Error != nil {
 		return result.Error
 	}
 
@@ -28,7 +28,7 @@ func (u *User) GetUser() error {
 }
 
 func (u *User) UpdateUser() error {
-	result := context.Context.DB.Model(&u).Select(
+	result := appContext.DB.Model(&u).Select(
 		"first_name",
 		"last_name",
 		"email",
@@ -48,7 +48,7 @@ func (u *User) UpdatePassword() error {
 
 	u.Password = string(hashUserPassword(u.Password))
 
-	result := context.Context.DB.Model(&u).Update("password", u.Password)
+	result := appContext.DB.Model(&u).Update("password", u.Password)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -69,7 +69,7 @@ func (u *User) CreateUser() error {
 		return err
 	}
 
-	result := context.Context.DB.Create(&u)
+	result := appContext.DB.Create(&u)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -78,7 +78,7 @@ func (u *User) CreateUser() error {
 }
 
 func (u *User) LoginUser(loginUser dto.LoginUser) error {
-	result := context.Context.DB.First(&u, "username=$1", loginUser.Username)
+	result := appContext.DB.First(&u, "username=$1", loginUser.Username)
 
 	if result.Error != nil {
 		return result.Error

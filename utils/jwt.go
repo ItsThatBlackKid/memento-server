@@ -1,43 +1,34 @@
 package utils
 
 import (
-	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"memento/dto"
+	"os"
+	"time"
 )
 
-type UserJwtClaim struct {
-	jwt.Claims
-	User *dto.UserDTO `json:"user"`
+type UserClaims struct {
+	UserID   uint   `json:"user_id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	jwt.RegisteredClaims
 }
 
-func EncodeJwt(user dto.UserDTO) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, UserJwtClaim{
-		Claims: nil,
-		User:   &user,
-	})
-
-	return token.SignedString([]byte("shhh"))
-}
-
-func DecodeJwt(tokenString string) (*dto.UserDTO, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte("shh"), nil
-	})
-
-	if err != nil {
-		return nil, err
+func CreateJwtForUser(user dto.UserDTO) (string, error) {
+	claims := UserClaims{
+		user.ID,
+		user.Username,
+		user.Email,
+		jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "memento-server",
+			Subject:   user.Username,
+		},
 	}
 
-	claims, ok := token.Claims.(UserJwtClaim)
-	if !ok {
-		return nil, errors.New("invalid JWT Token")
-	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return claims.User, err
-}
-
-func VerifyJwt(tokenString string) error {
-	_, err := DecodeJwt(tokenString)
-	return err
+	return token.SignedString(os.Getenv("TOKEN_SECRET"))
 }

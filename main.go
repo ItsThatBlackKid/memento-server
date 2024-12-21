@@ -2,22 +2,21 @@ package main
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"log"
-	"memento/context"
+	"memento/appContext"
 	"memento/controller"
+	"memento/middleware"
 	"memento/models"
 	"net/http"
 	"os"
 )
 
-var DB *gorm.DB
-
 func initDB() {
-	var err error
-	DB, err = gorm.Open(sqlite.Open(os.Getenv("DB")), &gorm.Config{})
-	DB = DB.Set("gorm:auto_preload", true)
+	var DB, err = gorm.Open(sqlite.Open(os.Getenv("DB")), &gorm.Config{})
+	DB = appContext.DB.Set("gorm:auto_preload", true)
 	log.Println("Loaded database")
 
 	if err != nil {
@@ -32,26 +31,30 @@ func initDB() {
 		log.Fatal(err)
 	}
 	log.Println("Memento table migrated")
+
+	appContext.DB = DB
 }
 
 func main() {
-	// initalize app
-	initDB()
-
-	// define routes
-	r := mux.NewRouter()
-	context.Context = context.RequestContext{
-		DB: DB,
+	// ensure .env file is loaded
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
 	}
 
+	initDB()
+
+	r := mux.NewRouter()
 	// user + auth routes
 	r.HandleFunc("/users", controller.CreateUser).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", controller.GetUser).Methods("GET")
 	r.HandleFunc("/login", controller.LoginUser).Methods("POST")
 
+	authRouter := r.PathPrefix("/").Subrouter()
+	authRouter.Use(middleware.AuthMiddleware)
+	authRouter.HandleFunc("/users/{id:[0-9]+}", controller.GetUser).Methods("GET")
+
 	// memento routes
-	r.HandleFunc("/memento", controller.CreateMemento).Methods("POST")
-	r.HandleFunc("/memento/{userid: [0-9]+}", controller.GetMementos).Methods("GET")
+	authRouter.HandleFunc("/memento", controller.CreateMemento).Methods("POST")
+	authRouter.HandleFunc("/memento/{userid: [0-9]+}", controller.GetMementos).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

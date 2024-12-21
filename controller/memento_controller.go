@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"memento/context"
+	"io"
+	"log"
+	"memento/appContext"
 	"memento/models"
 	"net/http"
 	"strconv"
@@ -18,7 +20,7 @@ func GetMementos(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userid, err := strconv.Atoi(vars["userid"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
@@ -26,13 +28,13 @@ func GetMementos(w http.ResponseWriter, r *http.Request) {
 		UserID: uint(userid),
 	}
 
-	mementos, err := memento.GetMementosByUserId(context.Context.DB)
+	mementos, err := memento.GetMementosByUserId(appContext.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, mementos)
+	ResponseWithJson(w, http.StatusOK, mementos)
 }
 
 func CreateMemento(w http.ResponseWriter, r *http.Request) {
@@ -41,16 +43,22 @@ func CreateMemento(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&m); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println(err.Error())
+			RespondWithError(w, http.StatusInternalServerError, "Unexpected error occurred, try again")
+		}
+	}(r.Body)
 
 	if err := m.CreateMemento(); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, m)
+	ResponseWithJson(w, http.StatusCreated, m)
 }
