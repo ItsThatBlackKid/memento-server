@@ -16,12 +16,12 @@ import (
 
 func initDB() {
 	var DB, err = gorm.Open(sqlite.Open(os.Getenv("DB")), &gorm.Config{})
-	DB = appContext.DB.Set("gorm:auto_preload", true)
-	log.Println("Loaded database")
-
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	appContext.DB = DB.Set("gorm:auto_preload", true)
+	log.Println("Loaded database")
 
 	if err := DB.AutoMigrate(&models.User{}, &models.Memento{}); err != nil {
 		log.Fatal(err)
@@ -54,7 +54,7 @@ func main() {
 
 	// memento routes
 	authRouter.HandleFunc("/memento", controller.CreateMemento).Methods("POST")
-	authRouter.HandleFunc("/memento/{userid: [0-9]+}", controller.GetMementos).Methods("GET")
+	authRouter.HandleFunc("/memento", controller.GetMementos).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

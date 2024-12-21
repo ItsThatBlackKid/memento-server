@@ -83,7 +83,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 			)
 		}
 	}(r.Body)
-	u.ID = uint(int8(id))
+	u.ID = uint(id)
 
 	if err := u.UpdateUser(); err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -122,6 +122,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	token, err := utils.CreateJwtForUser(user.ToDTO())
 
 	if err != nil {
+		log.Println("unable to login user", err.Error())
 		RespondWithError(
 			w,
 			http.StatusInternalServerError,

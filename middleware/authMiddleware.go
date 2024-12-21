@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"log"
 	"memento/controller"
 	"memento/utils"
 	"net/http"
@@ -20,6 +21,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			tokenString := r.Header.Get("Authorization")
+			tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
 			if tokenString == "" {
 				controller.RespondWithError(
 					w,
@@ -29,7 +31,6 @@ func AuthMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			tokenString = strings.Replace(tokenString, "Bearer", "", 1)
 			token, err := jwt.ParseWithClaims(
 				tokenString,
 				&utils.UserClaims{},
@@ -43,6 +44,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			)
 
 			if err != nil || !token.Valid {
+				log.Println("Invalid token error", err.Error())
 				handleAuthError(w, "invalid token")
 				return
 			}

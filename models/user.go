@@ -78,7 +78,7 @@ func (u *User) CreateUser() error {
 }
 
 func (u *User) LoginUser(loginUser dto.LoginUser) error {
-	result := appContext.DB.First(&u, "username=$1", loginUser.Username)
+	result := appContext.DB.First(&u, "username", loginUser.Username)
 
 	if result.Error != nil {
 		return result.Error

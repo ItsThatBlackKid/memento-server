@@ -30,5 +30,5 @@ func CreateJwtForUser(user dto.UserDTO) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString(os.Getenv("TOKEN_SECRET"))
+	return token.SignedString([]byte(os.Getenv("TOKEN_SECRET")))
 }
